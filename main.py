@@ -34,7 +34,7 @@ class MyWindow(Tk):
         self.resizable(False, False)
         self.geometry('715x150')
 
-        self.excel_name = 'excel_kanji.xlsx'
+        self.excel_name = 'excel_kanji.xls'
         if os.path.exists(self.excel_name)==False:
             print('Có vẻ như không tồn tại file excel với tên '+self.excel_name +
                   ', nếu bạn đã tạo một file excel thì hãy xem thử tên của nó đã đúng là '+self.excel_name+' hay chưa, sau đó chạy lại chương trình')
