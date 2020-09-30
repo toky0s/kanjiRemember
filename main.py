@@ -1,4 +1,4 @@
-from tkinter import StringVar, Tk, Label, Button, Frame, FLAT
+from tkinter import Event, StringVar, Tk, Label, Button, Frame, FLAT, IntVar, Checkbutton
 import xlrd
 import os
 import threading
@@ -12,6 +12,7 @@ class Kanji:
         self.hiragana = data[1]
         self.bo_thu = data[2]
         self.mean = data[3]
+        self.bai = data[4]
 
     def getKanji(self):
         return self.kanji
@@ -24,6 +25,9 @@ class Kanji:
 
     def getMean(self):
         return self.mean
+
+    def getBai(self):
+        return self.bai
 
 
 class MyWindow(Tk):
@@ -55,8 +59,13 @@ class MyWindow(Tk):
         self.kanjiMode = True
 
         # config app
-        self.FONT_HIRAGANA = 30
+        self.FONT_HIRAGANA = 50
         self.FONT_KANJI = 50
+        self.FONT = ''
+
+        # state
+        self.listCurrentChoice = []
+        self.enableCheckbox = []
         self.setupUI()
 
     def setupUI(self):
@@ -65,6 +74,26 @@ class MyWindow(Tk):
         self.kanji = Label(master=self, font=(
             '', self.FONT_KANJI), textvariable=self.kanji_var)
         self.kanji.pack(expand=True)
+
+        self.frame_bai = Frame(master=self)
+        row = 0
+        col = 0
+        count = 0
+        while True:
+            if(col==10):
+                col = 0
+                row+=1
+            if(row == 5):
+                row==4
+            self.enableCheckbox.append(IntVar())
+            c = Checkbutton(master=self.frame_bai, text='Bài {}'.format(count+1), variable=self.enableCheckbox[count])
+            c['command'] = self.loadKotoba
+            c.grid(row=row, column=col)
+            count+=1
+            col+=1
+            if count == 50:
+                break
+        self.frame_bai.pack()
 
         self.button_next = Button(master=self, text='Từ khác')
         self.button_next['relief'] = FLAT
@@ -132,6 +161,29 @@ class MyWindow(Tk):
             return
         self.kanji_var.set(self.currentKanji.getKanji())
         self.kanjiMode = True
+
+    def loadKotoba(self):
+        self.listCurrentChoice = []
+        for var in range(len(self.enableCheckbox)):
+            if(self.enableCheckbox[var].get()==1):
+                self.listCurrentChoice.append(var+1)
+        
+        # load Kanji to list
+        self.listKanji = []
+        self.sheet = self.wb.sheet_by_index(0)
+        if self.listCurrentChoice == []:
+            print('show all')
+            self.sheet = self.wb.sheet_by_index(0)
+            self.listKanji = [Kanji(self.sheet.row_values(i))
+                          for i in range(1, self.sheet.nrows)]
+        else:
+            print(self.listCurrentChoice)
+            for i in range(1, self.sheet.nrows):
+                if (self.sheet.row_values(i)[4] in self.listCurrentChoice):
+                    self.listKanji.append(Kanji(self.sheet.row_values(i)))
+        self.nextWord()
+
+        
 
 
 if __name__ == "__main__":
