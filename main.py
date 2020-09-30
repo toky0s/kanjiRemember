@@ -31,57 +31,70 @@ class MyWindow(Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Help you pro Kanji")
-        self.resizable(False, False)
-        self.geometry('715x150')
+        self.attributes('-fullscreen', True)
+        self.bind('<Key-Escape>', lambda e: exit())
 
+        # check excel
         self.excel_name = 'excel_kanji.xls'
-        if os.path.exists(self.excel_name)==False:
+        if os.path.exists(self.excel_name) == False:
             print('Có vẻ như không tồn tại file excel với tên '+self.excel_name +
                   ', nếu bạn đã tạo một file excel thì hãy xem thử tên của nó đã đúng là '+self.excel_name+' hay chưa, sau đó chạy lại chương trình')
             exit()
+
+        # load kanji
         self.wb = xlrd.open_workbook(self.excel_name)
         self.sheet = self.wb.sheet_by_index(0)
         self.listKanji = [Kanji(self.sheet.row_values(i))
                           for i in range(1, self.sheet.nrows)]
-
         self.currentKanji = choice(self.listKanji)
+
+        # event keydown/up
+        self.bind('<KeyPress-space>', self.spaceDown)
+        self.bind('<KeyRelease-space>', self.spaceUp)
+        self.bind('<Key-Right>', self.nextWord)
         self.kanjiMode = True
+
+        # config app
+        self.FONT_HIRAGANA = 30
+        self.FONT_KANJI = 50
         self.setupUI()
 
     def setupUI(self):
 
         self.kanji_var = StringVar(self)
-        self.kanji = Label(master=self, text='漢字', font=(
-            '', 50), textvariable=self.kanji_var)
-        self.kanji['background'] = '#74b9ff'
-        self.kanji.place(x=0, y=0, width=590, height=150)
+        self.kanji = Label(master=self, font=(
+            '', self.FONT_KANJI), textvariable=self.kanji_var)
+        self.kanji.pack(expand=True)
 
         self.button_next = Button(master=self, text='Từ khác')
         self.button_next['relief'] = FLAT
         self.button_next['background'] = '#fab1a0'
         self.button_next['command'] = self.nextWord
-        self.button_next.place(x=590, y=0, width=125, height=50)
+        self.button_next.place(x=0, y=100, width=125, height=50)
 
         self.show_mode = StringVar(master=self, value='Hiragana')
         self.button_hiragana = Button(master=self, textvariable=self.show_mode)
         self.button_hiragana['relief'] = FLAT
         self.button_hiragana['background'] = '#e17055'
         self.button_hiragana['command'] = self.showHiragana
-        self.button_hiragana.place(x=590, y=50, width=125, height=50)
+        self.button_hiragana.place(x=115, y=100, width=125, height=50)
 
         self.button_excel = Button(master=self, text='Excel')
         self.button_excel['relief'] = FLAT
         self.button_excel['background'] = '#fdcb6e'
         self.button_excel['command'] = self.showExcel
-        self.button_excel.place(x=590, y=100, width=125, height=50)
+        self.button_excel.place(x=230, y=100, width=125, height=50)
 
         self.loadWord()
 
     def loadWord(self):
+        if self.currentKanji.getKanji() == '':
+            self.kanji_var.set(self.currentKanji.getHiragana())
+            return
         self.kanji_var.set(self.currentKanji.getKanji())
 
-    def nextWord(self):
-        self.kanji['font'] = ('', 50)
+    def nextWord(self, event=None):
+        self.kanji['font'] = ('', self.FONT_KANJI)
         self.currentKanji = choice(self.listKanji)
         self.loadWord()
 
@@ -92,9 +105,9 @@ class MyWindow(Tk):
                                '\n'+self.currentKanji.getBoThu() +
                                '\n'+self.currentKanji.getMean())
             self.kanjiMode = False
-            self.kanji['font'] = ('', 12)
+            self.kanji['font'] = ('', self.FONT_HIRAGANA)
         else:
-            self.kanji['font'] = ('', 50)
+            self.kanji['font'] = ('', self.FONT_KANJI)
             self.show_mode.set('Hiragana')
             self.kanji_var.set(self.currentKanji.getKanji())
             self.kanjiMode = True
@@ -102,6 +115,23 @@ class MyWindow(Tk):
     def showExcel(self):
         tr = threading.Thread(target=lambda: os.system(self.excel_name))
         tr.start()
+
+    def spaceDown(self, event):
+        self.show_mode.set("Kanji")
+        self.kanji_var.set(self.currentKanji.getHiragana() +
+                            '\n'+self.currentKanji.getBoThu() +
+                            '\n'+self.currentKanji.getMean())
+        self.kanjiMode = False
+        self.kanji['font'] = ('', self.FONT_HIRAGANA)
+    
+    def spaceUp(self, event):
+        self.kanji['font'] = ('', self.FONT_KANJI)
+        self.show_mode.set('Hiragana')
+        if self.currentKanji.getKanji() == '':
+            self.kanji_var.set(self.currentKanji.getHiragana())
+            return
+        self.kanji_var.set(self.currentKanji.getKanji())
+        self.kanjiMode = True
 
 
 if __name__ == "__main__":
