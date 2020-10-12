@@ -1,17 +1,21 @@
-from logging import log
+import logging
 import xlrd
 import os
 import threading
 import playsound
 import logging
 
-from tkinter import Event, StringVar, Tk, Label, Button, Frame, FLAT, IntVar, Checkbutton
+from tkinter import StringVar, Tk, Label, Button, Frame, FLAT, IntVar, Checkbutton
 from random import choice
-from urllib.request import urlretrieve
 from kanji import Kanji
 
 
 # logging.basicConfig(level=logging.INFO)
+
+# setting here
+ROOT = 'http://jls.vnjpclub.com/'
+SOUNDS_FOLDER = 'sounds/'
+EXCEL_NAME = 'excel_kanji_sub.xls'
 
 class MyWindow(Tk):
 
@@ -26,14 +30,13 @@ class MyWindow(Tk):
         self.bind('<Key-Escape>', lambda e: exit())
 
         # check excel
-        self.excel_name = 'excel_kanji.xls'
-        if os.path.exists(self.excel_name) == False:
-            print('Có vẻ như không tồn tại file excel với tên '+self.excel_name +
-                  ', nếu bạn đã tạo một file excel thì hãy xem thử tên của nó đã đúng là '+self.excel_name+' hay chưa, sau đó chạy lại chương trình')
+        if os.path.exists(EXCEL_NAME) == False:
+            print('Có vẻ như không tồn tại file excel với tên '+ EXCEL_NAME +
+                  ', nếu bạn đã tạo một file excel thì hãy xem thử tên của nó đã đúng là '+ EXCEL_NAME+' hay chưa, sau đó chạy lại chương trình')
             exit()
 
         # load kanji
-        self.wb = xlrd.open_workbook(self.excel_name)
+        self.wb = xlrd.open_workbook(EXCEL_NAME)
         self.sheet = self.wb.sheet_by_index(0)
         self.listKanji = []
         for i in range(1, self.sheet.nrows):
@@ -137,12 +140,6 @@ class MyWindow(Tk):
 
     def showHiragana(self):
         if self.KANJI_MODE:
-            # self.show_mode.set("Kanji")
-            # self.kanji_var.set(self.CURRENT_KANJI.getHiragana() +
-            #                    '\n'+self.CURRENT_KANJI.getHanViet() +
-            #                    '\n'+self.CURRENT_KANJI.getMean())
-
-            # self.kanji['font'] = ('', self.FONT_HIRAGANA)
             self.KANJI_MODE = False
             show_hiragana = threading.Thread(target=self.thread_show_hiragana)
             read_hiragana = threading.Thread(target=self.readWord, kwargs={'path':self.CURRENT_KANJI.getSoundPath()})
@@ -160,18 +157,12 @@ class MyWindow(Tk):
 
 
     def showExcel(self):
-        tr = threading.Thread(target=lambda: os.system(self.excel_name))
+        tr = threading.Thread(target=lambda: os.system(EXCEL_NAME))
         tr.start()
 
 
     def spaceDown(self, event):
         logging.info('Space down')
-        # self.show_mode.set("Kanji")
-        # self.kanji_var.set(self.CURRENT_KANJI.getHiragana() +
-        #                     '\n'+self.CURRENT_KANJI.getHanViet() +
-        #                     '\n'+self.CURRENT_KANJI.getMean())
-
-        # self.kanji['font'] = ('', self.FONT_HIRAGANA)
         self.KANJI_MODE = False
         show_hiragana = threading.Thread(target=self.thread_show_hiragana)
         read_hiragana = threading.Thread(target=self.readWord, kwargs={'path':self.CURRENT_KANJI.getSoundPath()})
@@ -241,6 +232,7 @@ class MyWindow(Tk):
 
     def readWord(self, path):
         playsound.playsound(path)
+
 
     def thread_show_hiragana(self):
         self.show_mode.set("Kanji")
