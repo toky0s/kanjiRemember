@@ -17,5 +17,3 @@ bản thân tự chủ được tình hình.
 Sai lầm của mình là tạo ra một khung cho việc cào Kanji, đưa dữ liệu thô vào Kanji sau đó lưu vào excel, ngu vc.
 Thật ra thì cái script cào nó chả liên quan đéo gì tới cái chương trình của mình cả.
 Mà chỉ có file excel tương tác với chương trình.
-
-Nhìn vào comment 1 rõ ràng theo ý của bạn là cái tên đó không được đặt. Nhưng sau 1 hồi tới comment 2 thì bạn là ủng hộ việc bạn đặt cái tên đó :D
