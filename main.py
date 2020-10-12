@@ -1,41 +1,28 @@
-from tkinter import Event, StringVar, Tk, Label, Button, Frame, FLAT, IntVar, Checkbutton
+from logging import log
 import xlrd
 import os
 import threading
+import playsound
+import logging
+
+from tkinter import Event, StringVar, Tk, Label, Button, Frame, FLAT, IntVar, Checkbutton
 from random import choice
+from urllib.request import urlretrieve
+from kanji import Kanji
 
 
-class Kanji:
-
-    def __init__(self, data) -> None:
-        self.kanji = data[0]
-        self.hiragana = data[1]
-        self.bo_thu = data[2]
-        self.mean = data[3]
-        self.bai = data[4]
-
-    def getKanji(self):
-        return self.kanji
-
-    def getHiragana(self):
-        return self.hiragana
-
-    def getBoThu(self):
-        return self.bo_thu
-
-    def getMean(self):
-        return self.mean
-
-    def getBai(self):
-        return self.bai
-
+# logging.basicConfig(level=logging.INFO)
 
 class MyWindow(Tk):
+
+    CURRENT_KANJI = None
 
     def __init__(self) -> None:
         super().__init__()
         self.title("Help you pro Kanji")
-        self.attributes('-fullscreen', True)
+        # self.attributes('-fullscreen', True)
+        self['width'] = 1000
+        self['height'] = 1000
         self.bind('<Key-Escape>', lambda e: exit())
 
         # check excel
@@ -48,31 +35,42 @@ class MyWindow(Tk):
         # load kanji
         self.wb = xlrd.open_workbook(self.excel_name)
         self.sheet = self.wb.sheet_by_index(0)
-        self.listKanji = [Kanji(self.sheet.row_values(i))
-                          for i in range(1, self.sheet.nrows)]
-        self.currentKanji = choice(self.listKanji)
+        self.listKanji = []
+        for i in range(1, self.sheet.nrows):
+            row = self.sheet.row(i)
+            kanji = row[0].value
+            hiragana = row[1].value
+            han_viet = row[2].value
+            mean = row[3].value
+            bai = row[4].value
+            sound_url = row[5].value
+            sound_path = row[6].value
+            kanji_object = Kanji(kanji, hiragana, han_viet, mean, bai, sound_url, sound_path)
+            self.listKanji.append(kanji_object)
 
         # event keydown/up
         self.bind('<KeyPress-space>', self.spaceDown)
         self.bind('<KeyRelease-space>', self.spaceUp)
-        self.bind('<Key-Right>', self.nextWord)
-        self.kanjiMode = True
+        self.bind('<Key-Right>', self.loadWord)
+
 
         # config app
         self.FONT_HIRAGANA = 50
         self.FONT_KANJI = 50
         self.FONT = ''
+        self.ORDER_MODE = True
+        self.KANJI_MODE = True
 
         # state
         self.listCurrentChoice = []
         self.enableCheckbox = []
         self.setupUI()
 
+
     def setupUI(self):
 
         self.kanji_var = StringVar(self)
-        self.kanji = Label(master=self, font=(
-            '', self.FONT_KANJI), textvariable=self.kanji_var)
+        self.kanji = Label(master=self, font=('', self.FONT_KANJI), textvariable=self.kanji_var)
         self.kanji.pack(expand=True)
 
         self.frame_bai = Frame(master=self)
@@ -98,7 +96,7 @@ class MyWindow(Tk):
         self.button_next = Button(master=self, text='Từ khác')
         self.button_next['relief'] = FLAT
         self.button_next['background'] = '#fab1a0'
-        self.button_next['command'] = self.nextWord
+        self.button_next['command'] = self.loadWord
         self.button_next.place(x=0, y=100, width=125, height=50)
 
         self.show_mode = StringVar(master=self, value='Hiragana')
@@ -116,73 +114,141 @@ class MyWindow(Tk):
 
         self.loadWord()
 
-    def loadWord(self):
-        if self.currentKanji.getKanji() == '':
-            self.kanji_var.set(self.currentKanji.getHiragana())
-            return
-        self.kanji_var.set(self.currentKanji.getKanji())
 
-    def nextWord(self, event=None):
+    def loadWord(self, event=None):
+        logging.info('Load word!!!')
+        self.KANJI_MODE = True
         self.kanji['font'] = ('', self.FONT_KANJI)
-        self.currentKanji = choice(self.listKanji)
-        self.loadWord()
+        self.CURRENT_KANJI = choice(self.listKanji)
+
+        # kiem tra file am thanh da ton tai hay chua
+        logging.debug('loadWord:File sound is exist: {}'.format(os.path.exists(self.CURRENT_KANJI.sound_path)))
+        if os.path.exists(self.CURRENT_KANJI.sound_path) == False:
+            self.CURRENT_KANJI.downloadSound()
+
+        logging.debug('loadWord:current kanji:getKanji:{}'.format(self.CURRENT_KANJI.getKanji()))
+        if self.CURRENT_KANJI.getKanji() == '':
+            logging.info('loadWord:Kanji is Empty')
+            self.show_mode.set('Nghĩa')
+            self.kanji_var.set(self.CURRENT_KANJI.getHiragana())
+        else:
+            self.kanji_var.set(self.CURRENT_KANJI.getKanji())
+
 
     def showHiragana(self):
-        if self.kanjiMode:
-            self.show_mode.set("Kanji")
-            self.kanji_var.set(self.currentKanji.getHiragana() +
-                               '\n'+self.currentKanji.getBoThu() +
-                               '\n'+self.currentKanji.getMean())
-            self.kanjiMode = False
-            self.kanji['font'] = ('', self.FONT_HIRAGANA)
+        if self.KANJI_MODE:
+            # self.show_mode.set("Kanji")
+            # self.kanji_var.set(self.CURRENT_KANJI.getHiragana() +
+            #                    '\n'+self.CURRENT_KANJI.getHanViet() +
+            #                    '\n'+self.CURRENT_KANJI.getMean())
+
+            # self.kanji['font'] = ('', self.FONT_HIRAGANA)
+            self.KANJI_MODE = False
+            show_hiragana = threading.Thread(target=self.thread_show_hiragana)
+            read_hiragana = threading.Thread(target=self.readWord, kwargs={'path':self.CURRENT_KANJI.getSoundPath()})
+            show_hiragana.start()
+            read_hiragana.start()
         else:
             self.kanji['font'] = ('', self.FONT_KANJI)
-            self.show_mode.set('Hiragana')
-            self.kanji_var.set(self.currentKanji.getKanji())
-            self.kanjiMode = True
+            if self.CURRENT_KANJI.getKanji() == '':
+                self.show_mode.set('Nghĩa')
+                self.kanji_var.set(self.CURRENT_KANJI.getHiragana())
+            else:
+                self.show_mode.set('Hiragana')
+                self.kanji_var.set(self.CURRENT_KANJI.getKanji())
+            self.KANJI_MODE = True
+
 
     def showExcel(self):
         tr = threading.Thread(target=lambda: os.system(self.excel_name))
         tr.start()
 
+
     def spaceDown(self, event):
-        self.show_mode.set("Kanji")
-        self.kanji_var.set(self.currentKanji.getHiragana() +
-                            '\n'+self.currentKanji.getBoThu() +
-                            '\n'+self.currentKanji.getMean())
-        self.kanjiMode = False
-        self.kanji['font'] = ('', self.FONT_HIRAGANA)
+        logging.info('Space down')
+        # self.show_mode.set("Kanji")
+        # self.kanji_var.set(self.CURRENT_KANJI.getHiragana() +
+        #                     '\n'+self.CURRENT_KANJI.getHanViet() +
+        #                     '\n'+self.CURRENT_KANJI.getMean())
+
+        # self.kanji['font'] = ('', self.FONT_HIRAGANA)
+        self.KANJI_MODE = False
+        show_hiragana = threading.Thread(target=self.thread_show_hiragana)
+        read_hiragana = threading.Thread(target=self.readWord, kwargs={'path':self.CURRENT_KANJI.getSoundPath()})
+        show_hiragana.start()
+        read_hiragana.start()
+
     
     def spaceUp(self, event):
+        logging.info('Space Up')
         self.kanji['font'] = ('', self.FONT_KANJI)
         self.show_mode.set('Hiragana')
-        if self.currentKanji.getKanji() == '':
-            self.kanji_var.set(self.currentKanji.getHiragana())
-            return
-        self.kanji_var.set(self.currentKanji.getKanji())
-        self.kanjiMode = True
+        if self.CURRENT_KANJI.getKanji() == '':
+            self.kanji_var.set(self.CURRENT_KANJI.getHiragana())
+        else:
+            self.kanji_var.set(self.CURRENT_KANJI.getKanji())
+        self.KANJI_MODE = True
+
 
     def loadKotoba(self):
+        logging.info('load new word')
+        """Làm sao để học mà không biết học bài nào :D Không sao đã có hàm chọn bài giúp bạn thoải
+        mái chọn những bài mà bạn cần ôn.
+        
+        @ làm mới lại listKanji và gọi lại LoadWord"""
+        # clean and add lesson to listcurrentchoice
         self.listCurrentChoice = []
         for var in range(len(self.enableCheckbox)):
             if(self.enableCheckbox[var].get()==1):
                 self.listCurrentChoice.append(var+1)
         
-        # load Kanji to list
-        self.listKanji = []
+        # clean and load Kanji to list
+        self.listKanji.clear()
         self.sheet = self.wb.sheet_by_index(0)
+
+        # load all word when the app start
         if self.listCurrentChoice == []:
-            print('show all')
             self.sheet = self.wb.sheet_by_index(0)
-            self.listKanji = [Kanji(self.sheet.row_values(i))
-                          for i in range(1, self.sheet.nrows)]
+            for i in range(1, self.sheet.nrows):
+                row = self.sheet.row(i)
+                kanji = row[0].value
+                hiragana = row[1].value
+                han_viet = row[2].value
+                mean = row[3].value
+                bai = row[4].value
+                sound_url = row[5].value
+                sound_path = row[6].value
+                kanji_object = Kanji(kanji, hiragana, han_viet, mean, bai, sound_url, sound_path)
+                self.listKanji.append(kanji_object)
         else:
-            print(self.listCurrentChoice)
+            # load word base on lesson
             for i in range(1, self.sheet.nrows):
                 if (self.sheet.row_values(i)[4] in self.listCurrentChoice):
-                    self.listKanji.append(Kanji(self.sheet.row_values(i)))
-        self.nextWord()
+                    row = self.sheet.row(i)
+                    kanji = row[0].value
+                    hiragana = row[1].value
+                    han_viet = row[2].value
+                    mean = row[3].value
+                    bai = row[4].value
+                    sound_url = row[5].value
+                    sound_path = row[6].value
+                    kanji_object = Kanji(kanji, hiragana, han_viet, mean, bai, sound_url, sound_path)
+                    logging.info('Load kotoba:Kanji {}'.format(kanji_object.getHanViet()))
+                    self.listKanji.append(kanji_object)
+        logging.debug(self.listKanji)
+        self.loadWord()
 
+
+    def readWord(self, path):
+        playsound.playsound(path)
+
+    def thread_show_hiragana(self):
+        self.show_mode.set("Kanji")
+        self.kanji_var.set(self.CURRENT_KANJI.getHiragana() +
+                            '\n'+self.CURRENT_KANJI.getHanViet() +
+                            '\n'+self.CURRENT_KANJI.getMean())
+        self.KANJI_MODE = False
+        self.kanji['font'] = ('', self.FONT_HIRAGANA)
         
 
 
