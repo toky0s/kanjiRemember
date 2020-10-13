@@ -1,16 +1,21 @@
 # kanjiRemember
-A Tkinter App help you remember Kanjis :D
+Make you pro Kanjis :D
+Gửi lời cảm ơn sâu sắc đến:
+- Trần Quang Thìn - người đóng góp ý tưởng.
+- Thầy Ngọc dạy tiếng Nhật - người đóng góp icon cho App.
 
+# Usage
 
 ## Xem lại cái kiến trúc xí
 Ui vãi loz vì tui tự nhiên kiến trúc phần mềm một cách khá là ngu loz. Cho nên cập nhật cái readme xí để
 bản thân tự chủ được tình hình.
 
-* Mình tạo một Kanji object:
-    - Nó bao gồm: mặt kanji, hiragana, nghĩa Hán Việt, nghĩa, sound_url, sound_path.
-    - Hai method: setSavedSoundFilePath, downloadSound.
-* Nó sẽ có một script để đưa Kanji về file excel
-* Mỗi lần người dùng load tới Kanji đó thì Kanji đó sẽ tự động tải về, lưu path, lưu file vào folder.
+* Một Script kotoba.py cào data mục tiêu cuối cùng là xuất ra một file excel chưa từ vựng.
+* Một main.py là chương trình.
+* Một thư mục sounds/ chưa file âm thanh.
+
+* Bạn phải chạy cái file kotoba.py trước khi chạy main.py, nhưng lần sau thì chỉ cần chạy main.py thôi.
+
 
 ## Nói chung kiến trúc khá đơn giản như thế này :D
 "Đối tượng sẽ phụ thuộc vào dữ liệu đã được clean, dữ liệu thô không thể phụ thuộc vào Đối tượng" -- Xin phán.
